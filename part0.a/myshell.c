@@ -9,6 +9,17 @@
 void execute(cmdLine *pCmdLine);
 
 int main(int argc, char **argv){
+
+    int debugOn=0;
+    if(argc>1){
+        char minus = argv[1][0];
+        char di = argv[1][1];
+        if (minus=='-'&& di=='d')
+        {
+            debugOn=1;
+        }
+        
+    }
     while (1)
     {
        char buff[PATH_MAX];
@@ -32,6 +43,10 @@ int main(int argc, char **argv){
        }
        
        cmdLine *now=parseCmdLines(next);
+       if(debugOn){
+           pid_t pid=getpid();
+           fprintf(stderr,"command: %s, pid: %d\n",now->arguments[0],pid);
+       }
        execute(now);
        freeCmdLines(now);
        
@@ -50,8 +65,10 @@ void execute(cmdLine *pCmdLine){
     }
     else if (child!=0)//parent
     {
-        int waitState;
-        waitpid(child,&waitState,0);
+        if(pCmdLine->blocking==1){//wait only if needed
+            int waitState;
+            waitpid(child,&waitState,0);
+        }
     }
     else//child
     {
