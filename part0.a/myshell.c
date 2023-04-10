@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include "LineParser.h"
 #include <fcntl.h>
+#include <signal.h>
 
 void execute(cmdLine *pCmdLine);
 void redirectInput( char const *inputRedirect);
@@ -46,6 +47,7 @@ int main(int argc, char **argv){
        }
        
        cmdLine *now=parseCmdLines(next);
+       int killP=-1;
        if(debugOn){
            pid_t pid=getpid();
            fprintf(stderr,"command: %s, pid: %d\n",now->arguments[0],pid);
@@ -56,6 +58,21 @@ int main(int argc, char **argv){
                exit(EXIT_FAILURE);
            }
        }
+       else if(strcmp(now->arguments[0],"suspend")==0){
+           killP=kill(getegid(),SIGTSTP);
+           if(killP==-1)
+            printf("could not suspend procces");
+           }
+       else if (strcmp(now->arguments[0],"wake")==0){
+           killP=kill(getegid(),SIGCONT);
+           if(killP==-1)
+            printf("could not wake procces");
+           }
+       else if (strcmp(now->arguments[0],"kill")==0){
+           killP=kill(getegid(),SIGTERM);
+           if(killP==-1)
+            printf("could not kill procces");
+           }
        else
         execute(now);
 
@@ -84,12 +101,18 @@ void execute(cmdLine *pCmdLine){
     }
     else//child
     {
+        if(pCmdLine->inputRedirect!=NULL)
+            redirectInput(pCmdLine->inputRedirect);
+        if(pCmdLine->outputRedirect!=NULL){
+            redirectOutput(pCmdLine->outputRedirect);
+        }
         if(execvp(pCmdLine->arguments[0],pCmdLine->arguments)==-1){//did not succeed, exit abnormally
             perror("execv error");
             exit(EXIT_FAILURE);
         }
         if(pCmdLine->inputRedirect!=NULL)
             redirectInput(pCmdLine->inputRedirect);
+        printf("output: %s\n",pCmdLine->outputRedirect);
         if(pCmdLine->outputRedirect!=NULL)
             redirectInput(pCmdLine->outputRedirect);
     }
