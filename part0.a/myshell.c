@@ -5,8 +5,11 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include "LineParser.h"
+#include <fcntl.h>
 
 void execute(cmdLine *pCmdLine);
+void redirectInput( char const *inputRedirect);
+void redirectOutput( char const *outputRedirect);
 
 int main(int argc, char **argv){
 
@@ -47,7 +50,15 @@ int main(int argc, char **argv){
            pid_t pid=getpid();
            fprintf(stderr,"command: %s, pid: %d\n",now->arguments[0],pid);
        }
-       execute(now);
+       if(strcmp(now->arguments[0],"cd")==0){
+           if(chdir(now->arguments[1])==-1){
+               perror("chdir failer");
+               exit(EXIT_FAILURE);
+           }
+       }
+       else
+        execute(now);
+
        freeCmdLines(now);
        
        
@@ -69,6 +80,7 @@ void execute(cmdLine *pCmdLine){
             int waitState;
             waitpid(child,&waitState,0);
         }
+
     }
     else//child
     {
@@ -76,7 +88,29 @@ void execute(cmdLine *pCmdLine){
             perror("execv error");
             exit(EXIT_FAILURE);
         }
+        if(pCmdLine->inputRedirect!=NULL)
+            redirectInput(pCmdLine->inputRedirect);
+        if(pCmdLine->outputRedirect!=NULL)
+            redirectInput(pCmdLine->outputRedirect);
     }
     
     
+}
+void redirectInput( char const *inputRedirect){
+    int cd=open(inputRedirect,O_RDONLY);
+    if(cd==-1){
+        perror("could not redirect input file");
+        exit(EXIT_FAILURE);
+    }
+    dup2(cd, STDIN_FILENO);
+    close(cd);
+}
+void redirectOutput( char const *outputRedirect){
+    int cd=open(outputRedirect,O_CREAT|O_WRONLY);
+    if(cd==-1){
+        perror("could not redirect input file");
+        exit(EXIT_FAILURE);
+    }
+    dup2(cd,STDOUT_FILENO);
+    close(cd);
 }
